@@ -25,33 +25,7 @@ Built with **React 18**, **Vite**, and **Tailwind CSS**.
 - **Icons**: Lucide React
 - **Styling**: Tailwind CSS v3, PostCSS, Google Fonts (`Syne` & `Plus Jakarta Sans`)
 - **Routing**: React Router DOM v6
-
----
-
-## 🚀 Running Locally
-
-1. **Clone and enter repository**:
-   ```bash
-   git clone <repo_url>
-   cd skillsphere
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-
-3. **Start development server**:
-   ```bash
-   npm run dev
-   ```
-
-4. **Production build**:
-   ```bash
-   npm run build
-   ```
-
----
+- 
 
 ## 📂 Project Architecture
 
