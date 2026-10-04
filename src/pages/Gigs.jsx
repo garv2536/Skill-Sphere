@@ -1,149 +1,214 @@
-import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { useAuth } from '../App'
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { 
+  Search, 
+  Filter, 
+  MapPin, 
+  Clock, 
+  IndianRupee, 
+  Bookmark, 
+  ShieldCheck, 
+  Calendar, 
+  PlusCircle, 
+  X,
+  SlidersHorizontal,
+  ArrowUpDown
+} from 'lucide-react';
+import GigModal from '../components/GigModal';
+import PostJobModal from '../components/PostJobModal';
+import { useAuth } from '../App';
+import { useToast } from '../components/Toast';
 
-// ── Demo data ─────────────────────────────────────────────────
-const DEMO_GIGS = [
-  { _id: '1', title: 'Build a MERN Stack E-Commerce App', category: 'Web Development', budget: { min: 15000, max: 30000 }, deadline: '2026-06-20', skills: ['React', 'Node.js', 'MongoDB'], proposals: 4, status: 'open', client: { name: 'Rahul Gupta', location: 'Delhi' }, description: 'Looking for an experienced MERN developer to build a full-featured e-commerce platform with payment integration.' },
-  { _id: '2', title: 'Design Mobile App UI for HealthTech Startup', category: 'UI/UX Design', budget: { min: 8000, max: 15000 }, deadline: '2026-06-15', skills: ['Figma', 'Prototyping', 'Mobile UI'], proposals: 7, status: 'open', client: { name: 'Sneha Rao', location: 'Bangalore' }, description: 'We need a talented UI/UX designer to create beautiful, intuitive designs for our health tracking mobile application.' },
-  { _id: '3', title: 'Data Analysis & ML Model for Sales Prediction', category: 'Data Science', budget: { min: 20000, max: 45000 }, deadline: '2026-07-01', skills: ['Python', 'ML', 'Pandas', 'Scikit-learn'], proposals: 2, status: 'open', client: { name: 'Amit Shah', location: 'Mumbai' }, description: 'Seeking a data scientist to analyze 2 years of sales data and build a predictive model for Q3 2026.' },
-  { _id: '4', title: 'Flutter App for Grocery Delivery Service', category: 'Mobile Apps', budget: { min: 25000, max: 50000 }, deadline: '2026-06-30', skills: ['Flutter', 'Dart', 'Firebase'], proposals: 5, status: 'open', client: { name: 'Priya Mehta', location: 'Pune' }, description: 'Build a cross-platform mobile app for our local grocery delivery startup with real-time tracking.' },
-  { _id: '5', title: 'SEO & Content Strategy for SaaS Product', category: 'Digital Marketing', budget: { min: 5000, max: 12000 }, deadline: '2026-06-18', skills: ['SEO', 'Content Writing', 'Analytics'], proposals: 9, status: 'open', client: { name: 'Vikram Joshi', location: 'Hyderabad' }, description: 'We need a digital marketing expert to improve our SaaS product SEO and create a 3-month content roadmap.' },
-  { _id: '6', title: 'WordPress Website for Architecture Firm', category: 'Web Development', budget: { min: 6000, max: 10000 }, deadline: '2026-06-12', skills: ['WordPress', 'CSS', 'WooCommerce'], proposals: 11, status: 'open', client: { name: 'Anita Verma', location: 'Chennai' }, description: 'Create a modern portfolio website for our architecture firm showcasing projects and enabling client enquiries.' },
-]
+const CATEGORIES = [
+  'All',
+  'Web Development',
+  'UI/UX Design',
+  'AI & Data Science',
+  'Mobile Apps',
+  'Cloud & DevOps',
+  'Content & Growth'
+];
 
-const CATEGORIES = ['All', 'Web Development', 'UI/UX Design', 'Mobile Apps', 'Data Science', 'Digital Marketing', 'Content Writing']
+const EXPERIENCE_LEVELS = ['All', 'Entry', 'Intermediate', 'Senior', 'Expert'];
 
-const categoryColors = {
-  'Web Development':   'bg-blue-100 text-blue-700',
-  'UI/UX Design':      'bg-purple-100 text-purple-700',
-  'Mobile Apps':       'bg-emerald-100 text-emerald-700',
-  'Data Science':      'bg-amber-100 text-amber-700',
-  'Digital Marketing': 'bg-rose-100 text-rose-700',
-  'Content Writing':   'bg-teal-100 text-teal-700',
-}
+export default function Gigs({ gigs, onJobCreated, bookmarks = [], onToggleBookmark }) {
+  const { user } = useAuth();
+  const { addToast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-function GigCard({ gig }) {
-  const [applied, setApplied] = useState(false)
-  const { user } = useAuth()
-  const daysLeft = Math.max(0, Math.ceil((new Date(gig.deadline) - new Date()) / 86400000))
+  const urlCategory = searchParams.get('category') || 'All';
+  const urlSearch = searchParams.get('q') || '';
+  const urlSavedOnly = searchParams.get('saved') === 'true';
 
-  return (
-    <div className="card p-6 flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1">
-          <span className={`badge ${categoryColors[gig.category] || 'bg-slate-100 text-slate-600'} mb-2 inline-block`}>
-            {gig.category}
-          </span>
-          <h3 className="font-semibold text-slate-900 text-base leading-snug" style={{ fontFamily: 'Syne, sans-serif' }}>
-            {gig.title}
-          </h3>
-        </div>
-        <div className={`shrink-0 text-xs px-2 py-1 rounded-lg font-medium ${daysLeft <= 5 ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
-          {daysLeft}d left
-        </div>
-      </div>
+  const [search, setSearch] = useState(urlSearch);
+  const [category, setCategory] = useState(urlCategory);
+  const [experience, setExperience] = useState('All');
+  const [remoteOnly, setRemoteOnly] = useState(false);
+  const [savedOnly, setSavedOnly] = useState(urlSavedOnly);
+  const [sortBy, setSortBy] = useState('newest');
+  const [selectedGig, setSelectedGig] = useState(null);
+  const [postJobOpen, setPostJobOpen] = useState(false);
 
-      <p className="text-sm text-slate-500 leading-relaxed line-clamp-2">{gig.description}</p>
+  // Sync state if URL query param changes
+  useEffect(() => {
+    if (urlCategory) setCategory(urlCategory);
+    if (urlSearch) setSearch(urlSearch);
+    if (urlSavedOnly) setSavedOnly(true);
+  }, [urlCategory, urlSearch, urlSavedOnly]);
 
-      <div className="flex flex-wrap gap-1.5">
-        {gig.skills.slice(0, 4).map(skill => (
-          <span key={skill} className="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded-lg">{skill}</span>
-        ))}
-      </div>
+  const filteredGigs = useMemo(() => {
+    return gigs
+      .filter((g) => {
+        const matchesCategory = category === 'All' || g.category === category;
+        const matchesExperience = experience === 'All' || g.experienceLevel === experience;
+        const matchesRemote = !remoteOnly || g.isRemote;
+        const matchesSaved = !savedOnly || bookmarks.includes(g.id);
+        
+        const q = search.toLowerCase().trim();
+        const matchesSearch =
+          !q ||
+          g.title.toLowerCase().includes(q) ||
+          g.description.toLowerCase().includes(q) ||
+          g.skills.some((s) => s.toLowerCase().includes(q)) ||
+          (g.client?.company && g.client.company.toLowerCase().includes(q));
 
-      <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-        <div>
-          <p className="text-blue-600 font-semibold text-sm">
-            ₹{gig.budget.min.toLocaleString()} – ₹{gig.budget.max.toLocaleString()}
-          </p>
-          <p className="text-xs text-slate-400 mt-0.5">
-            📍 {gig.client.location} · {gig.proposals} proposals
-          </p>
-        </div>
-        {user?.role === 'freelancer' ? (
-          <button
-            onClick={() => setApplied(true)}
-            disabled={applied}
-            className={`text-sm px-4 py-2 rounded-xl font-medium transition-all ${
-              applied
-                ? 'bg-green-100 text-green-700 cursor-default'
-                : 'btn-primary py-2 px-4'
-            }`}
-          >
-            {applied ? '✓ Applied' : 'Apply Now'}
-          </button>
-        ) : (
-          <Link to="/login" className="btn-outline text-sm py-2 px-4">Apply</Link>
-        )}
-      </div>
-    </div>
-  )
-}
+        return matchesCategory && matchesExperience && matchesRemote && matchesSaved && matchesSearch;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'budget-high') return b.budget.max - a.budget.max;
+        if (sortBy === 'budget-low') return a.budget.min - b.budget.min;
+        if (sortBy === 'proposals') return a.proposalsCount - b.proposalsCount;
+        return 0; // 'newest' default
+      });
+  }, [gigs, category, experience, remoteOnly, savedOnly, search, sortBy, bookmarks]);
 
-export default function Gigs() {
-  const [gigs, setGigs]             = useState(DEMO_GIGS)
-  const [search, setSearch]         = useState('')
-  const [category, setCategory]     = useState('All')
-  const [sortBy, setSortBy]         = useState('newest')
-  const [loading, setLoading]       = useState(false)
+  const clearFilters = () => {
+    setSearch('');
+    setCategory('All');
+    setExperience('All');
+    setRemoteOnly(false);
+    setSavedOnly(false);
+    setSortBy('newest');
+    setSearchParams({});
+  };
 
-  const filtered = gigs
-    .filter(g =>
-      (category === 'All' || g.category === category) &&
-      (g.title.toLowerCase().includes(search.toLowerCase()) ||
-       g.skills.some(s => s.toLowerCase().includes(search.toLowerCase())))
-    )
-    .sort((a, b) => {
-      if (sortBy === 'budget-high') return b.budget.max - a.budget.max
-      if (sortBy === 'budget-low')  return a.budget.min - b.budget.min
-      if (sortBy === 'proposals')   return a.proposals - b.proposals
-      return 0
-    })
+  const handleApplySuccess = (gigId) => {
+    // Optionally update proposal counts
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="section-title mb-2">Find Gigs</h1>
-        <p className="text-slate-500">{filtered.length} open projects matching your search</p>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="relative flex-1">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            type="text"
-            placeholder="Search gigs or skills…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="input-field pl-9"
-          />
+      {/* Top Header & Post Button */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight" style={{ fontFamily: 'Syne, sans-serif' }}>
+            Open Engineering & Design Gigs
+          </h1>
+          <p className="text-slate-500 text-sm mt-1">
+            Browse {filteredGigs.length} active freelance contracts with milestone payment security.
+          </p>
         </div>
-        <select
-          value={sortBy}
-          onChange={e => setSortBy(e.target.value)}
-          className="input-field sm:w-44"
+        <button
+          onClick={() => setPostJobOpen(true)}
+          className="btn-primary text-sm py-2.5 px-4 self-start sm:self-auto flex items-center gap-2"
         >
-          <option value="newest">Newest first</option>
-          <option value="budget-high">Budget: High→Low</option>
-          <option value="budget-low">Budget: Low→High</option>
-          <option value="proposals">Fewest proposals</option>
-        </select>
+          <PlusCircle className="w-4 h-4" /> Post a Gig
+        </button>
       </div>
 
-      {/* Category tabs */}
+      {/* Main Search & Sort Bar */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm mb-6 space-y-3">
+        <div className="flex flex-col md:flex-row gap-3">
+          {/* Search Input */}
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search by job title, tech stack (Next.js, Python), or company..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="input-field pl-9.5 text-sm"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Experience Level */}
+          <select
+            value={experience}
+            onChange={(e) => setExperience(e.target.value)}
+            className="input-field md:w-44 text-xs font-medium"
+          >
+            {EXPERIENCE_LEVELS.map((lvl) => (
+              <option key={lvl} value={lvl}>
+                {lvl === 'All' ? 'All Experience Levels' : `${lvl} Level`}
+              </option>
+            ))}
+          </select>
+
+          {/* Sort By */}
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="input-field md:w-44 text-xs font-medium"
+          >
+            <option value="newest">Newest First</option>
+            <option value="budget-high">Budget: High → Low</option>
+            <option value="budget-low">Budget: Low → High</option>
+            <option value="proposals">Fewest Proposals</option>
+          </select>
+        </div>
+
+        {/* Filters and Toggles Row */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 text-xs">
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 hover:text-slate-900 font-medium select-none">
+              <input
+                type="checkbox"
+                checked={remoteOnly}
+                onChange={(e) => setRemoteOnly(e.target.checked)}
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              100% Remote Only
+            </label>
+
+            <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 hover:text-slate-900 font-medium select-none">
+              <input
+                type="checkbox"
+                checked={savedOnly}
+                onChange={(e) => setSavedOnly(e.target.checked)}
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              Saved Bookmarks ({bookmarks.length})
+            </label>
+          </div>
+
+          {(search || category !== 'All' || experience !== 'All' || remoteOnly || savedOnly) && (
+            <button
+              onClick={clearFilters}
+              className="text-blue-600 hover:text-blue-700 font-semibold"
+            >
+              Reset all filters
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Category Pills */}
       <div className="flex flex-wrap gap-2 mb-8">
-        {CATEGORIES.map(cat => (
+        {CATEGORIES.map((cat) => (
           <button
             key={cat}
             onClick={() => setCategory(cat)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all border ${
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all border ${
               category === cat
-                ? 'bg-blue-600 text-white border-blue-600'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                 : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-600'
             }`}
           >
@@ -152,18 +217,131 @@ export default function Gigs() {
         ))}
       </div>
 
-      {/* Gig grid */}
-      {filtered.length === 0 ? (
-        <div className="text-center py-20 text-slate-400">
-          <div className="text-5xl mb-4">🔍</div>
-          <p className="font-medium text-slate-600">No gigs found</p>
-          <p className="text-sm mt-1">Try adjusting your search or filters</p>
+      {/* Gigs List / Empty State */}
+      {filteredGigs.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center max-w-lg mx-auto space-y-4 shadow-sm">
+          <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 mx-auto">
+            <Search className="w-6 h-6" />
+          </div>
+          <h3 className="text-lg font-bold text-slate-900">No matching gigs found</h3>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Try adjusting your search terms, changing the category, or removing remote filters.
+          </p>
+          <button
+            onClick={clearFilters}
+            className="btn-outline text-xs py-2 px-4"
+          >
+            Clear Search & Filters
+          </button>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filtered.map(gig => <GigCard key={gig._id} gig={gig} />)}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredGigs.map((gig) => {
+            const isSaved = bookmarks.includes(gig.id);
+
+            return (
+              <div
+                key={gig.id}
+                onClick={() => setSelectedGig(gig)}
+                className="bg-white rounded-2xl border border-slate-200/90 p-6 shadow-sm hover:shadow-md hover:border-blue-400 transition-all cursor-pointer flex flex-col justify-between group"
+              >
+                <div>
+                  {/* Top Meta */}
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                        {gig.category}
+                      </span>
+                      <span className="text-[11px] font-medium bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                        {gig.experienceLevel}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleBookmark(gig.id);
+                      }}
+                      className={`p-1.5 rounded-lg border transition-colors ${
+                        isSaved
+                          ? 'bg-rose-50 border-rose-200 text-rose-600'
+                          : 'bg-white border-slate-200 text-slate-400 hover:text-slate-600'
+                      }`}
+                      title={isSaved ? 'Remove bookmark' : 'Save gig'}
+                    >
+                      <Bookmark className="w-4 h-4" fill={isSaved ? 'currentColor' : 'none'} />
+                    </button>
+                  </div>
+
+                  {/* Title */}
+                  <h2 className="text-base font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-snug line-clamp-2 mb-2" style={{ fontFamily: 'Syne, sans-serif' }}>
+                    {gig.title}
+                  </h2>
+
+                  {/* Description snippet */}
+                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-4">
+                    {gig.description}
+                  </p>
+
+                  {/* Skills tags */}
+                  <div className="flex flex-wrap gap-1.5 mb-5">
+                    {gig.skills.slice(0, 3).map((skill) => (
+                      <span
+                        key={skill}
+                        className="text-[11px] font-medium bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                    {gig.skills.length > 3 && (
+                      <span className="text-[11px] font-medium text-slate-400 px-1 py-0.5">
+                        +{gig.skills.length - 3} more
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bottom Card Footer */}
+                <div className="pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
+                  <div>
+                    <div className="flex items-center font-bold text-blue-700 text-sm">
+                      <IndianRupee className="w-3.5 h-3.5" />
+                      <span>{gig.budget.min.toLocaleString()} – {gig.budget.max.toLocaleString()}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+                      <MapPin className="w-3 h-3" /> {gig.location}
+                    </p>
+                  </div>
+
+                  <div className="text-right">
+                    <span className="inline-block text-[11px] font-semibold text-slate-600 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg">
+                      {gig.proposalsCount} proposals
+                    </span>
+                    <p className="text-[10px] text-slate-400 mt-0.5">{gig.postedAt}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
+
+      {/* Gig Modal Details & Proposals */}
+      <GigModal
+        gig={selectedGig}
+        isOpen={Boolean(selectedGig)}
+        onClose={() => setSelectedGig(null)}
+        isBookmarked={selectedGig ? bookmarks.includes(selectedGig.id) : false}
+        onToggleBookmark={onToggleBookmark}
+        onApplySuccess={handleApplySuccess}
+      />
+
+      {/* Post a Gig Modal */}
+      <PostJobModal
+        isOpen={postJobOpen}
+        onClose={() => setPostJobOpen(false)}
+        onJobCreated={onJobCreated}
+      />
     </div>
-  )
+  );
 }

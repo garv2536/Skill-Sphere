@@ -1,81 +1,72 @@
 # SkillSphere 🌐
 
-> Intelligent Hyperlocal Freelance Ecosystem connecting clients with top-rated local freelance talent.
+SkillSphere is a modern freelance marketplace connecting founders and engineering teams with verified freelance software architects, UI/UX designers, and machine learning specialists across India.
 
-SkillSphere is a modern freelance marketplace frontend built with **React 18**, **Vite**, and **Tailwind CSS**. It provides a seamless experience for browsing open gigs, discovering verified freelancers, posting jobs, and managing applications.
+Built with **React 18**, **Vite**, and **Tailwind CSS**.
 
 ---
 
-## ✨ Features
+## ⚡ Key Highlights
 
-- 🔍 **Gig Marketplace**: Search and filter gigs by category, budget, timeline, and required skills.
-- 👨‍💻 **Freelancer Discovery**: Find verified freelancers by skill ratings, availability, and hourly rates.
-- 🔐 **Authentication & Roles**: Role-based access for *Clients* and *Freelancers* with session persistence.
-- 🎨 **Modern Design System**: Built with Tailwind CSS and styled with `Syne` and `DM Sans` typography.
-- ⚡ **Lightning Fast**: Bundled and optimized with Vite 5.
+- **Gig Discovery & Bidding**: Filter high-intent contracts by tech stack, project duration, budget (in INR), and remote availability.
+- **Talent Directory**: Browse verified freelance engineers and designers with real client reviews, portfolios, and hourly rates.
+- **Interactive Proposal Flow**: Submit detailed proposals with milestone breakdowns and custom delivery estimates.
+- **Post a Project**: Multi-step job posting modal with live tag chips and instant feed updates.
+- **Bookmark & Saved Contracts**: Save interesting contracts with local persistence.
+- **Milestone Escrow Workflow**: Transparent breakdown of payment security and contract execution.
+- **Authentication**: Built-in personas for 1-click testing as a *Client* or *Freelancer*.
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: React 18
+- **Framework**: React 18
 - **Build Tool**: Vite 5
-- **Styling**: Tailwind CSS v3, PostCSS, Autoprefixer
+- **Icons**: Lucide React
+- **Styling**: Tailwind CSS v3, PostCSS, Google Fonts (`Syne` & `Plus Jakarta Sans`)
 - **Routing**: React Router DOM v6
-- **Typography**: Google Fonts (`Syne`, `DM Sans`)
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Running Locally
 
-### Prerequisites
-- Node.js (v18 or higher recommended)
-- npm or yarn
-
-### Installation
-
-1. Clone the repository:
+1. **Clone and enter repository**:
    ```bash
-   git clone <REPO_URL>
+   git clone <repo_url>
    cd skillsphere
    ```
 
-2. Install dependencies:
+2. **Install dependencies**:
    ```bash
    npm install
    ```
 
-3. Configure environment variables (optional):
-   ```bash
-   cp .env.example .env
-   ```
-
-4. Start development server:
+3. **Start development server**:
    ```bash
    npm run dev
    ```
 
-5. Build for production:
+4. **Production build**:
    ```bash
    npm run build
    ```
 
 ---
 
-## 📁 Project Structure
+## 📂 Project Architecture
 
 ```text
 skillsphere/
-├── public/
 ├── src/
-│   ├── components/       # Shared UI components (Navbar, etc.)
-│   ├── pages/            # App pages (Home, Gigs, Freelancers, Login, Register)
-│   ├── services/         # API clients and HTTP helper services
-│   ├── App.jsx           # Root application component & AuthContext
-│   ├── main.jsx          # React DOM root entry
-│   └── index.css         # Global Tailwind directives & custom CSS
-├── index.html            # Main HTML document
-├── tailwind.config.js    # Tailwind CSS configuration
+│   ├── components/       # Navbar, Footer, GigModal, FreelancerModal, PostJobModal, Toast
+│   ├── data/             # Curated marketplace dataset (gigs, talent, reviews, categories)
+│   ├── pages/            # Home, Gigs, Freelancers, HowItWorks, Login, Register
+│   ├── services/         # API client & fetch helpers
+│   ├── App.jsx           # Root layout, router & Auth / Bookmarks context
+│   ├── main.jsx          # Vite React root
+│   └── index.css         # Tailwind directives & design tokens
+├── index.html            # Main HTML entry
+├── tailwind.config.js    # Tailwind configuration
 └── vite.config.js        # Vite configuration
 ```
 
